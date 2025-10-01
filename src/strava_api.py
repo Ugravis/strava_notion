@@ -13,9 +13,11 @@ token = strava_oauth2(
 
 client = StravaIO(access_token=token['access_token'])
 activities = client.get_logged_in_athlete_activities()
-activities = activities[:3] # dev
+# activities = activities[:22] # dev
 
 notion = NotionInterface()
 
 for activity in activities:
   notion.add_row(activity)
+
+notion.update_medals_by_type()
