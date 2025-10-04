@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 from table_schema import SCHEMA
 from notion_client import Client
+from datetime import datetime
 import os
 
 
@@ -49,6 +50,21 @@ class NotionInterface:
   def add_row(self, data):
     if not self.database_id:
       raise Exception("Database not initialized")
+    
+    existing_rows = self.client.databases.query(database_id=self.database_id).get("results", [])
+    for row in existing_rows:
+      row_name = row["properties"]["Name"]["title"][0]["text"]["content"]
+      row_date = datetime.fromisoformat(row["properties"]["Date"]["date"]["start"])
+      print('######')
+      print(row_date)
+      print(data.start_date_local)
+      print('------')
+      print(row_name)
+      print(data.name)
+      print('######')
+      if row_name == data.name and abs((row_date - data.start_date_local).total_seconds()) < 120:
+        print('skip')
+        return
 
     self.client.pages.create(
       parent={"database_id": self.database_id},
