@@ -3,16 +3,19 @@ from table_schema import SCHEMA
 from notion_client import Client
 import os
 
+
 load_dotenv()
 NOTION_TOKEN = os.getenv("NOTION_TOKEN")
 notion_page_title = "Sport"
 notion_database_title = "Activities"
+
 
 class NotionInterface:
   def __init__(self):
     self.client = Client(auth=NOTION_TOKEN)
     self.database_id = None
     self.ensure_database()
+
 
   def get_page_id_by_title(self, title: str): 
     response = self.client.search(query=title, filter={"property": "object", "value": "page"})
@@ -22,16 +25,17 @@ class NotionInterface:
         if page_title == title:
           return result["id"]
     return None
-  
+
+
   def ensure_database(self):
     page_id = self.get_page_id_by_title(notion_page_title)
     if not page_id:
       raise Exception(f"Page '{notion_page_title}' not found.")
 
-    search_database = self.client.search(query=notion_database_title, filter={"property": "object", "value": "database"})
-    for database in search_database.get("results", []):
-      if database.get("title", "") == notion_database_title:
-        self.database_id = database["id"]
+    children = self.client.blocks.children.list(page_id)["results"]
+    for child in children:
+      if child["type"] == "child_database" and child["child_database"]["title"] == notion_database_title:
+        self.database_id = child["id"]
         return
       
     database = self.client.databases.create(
@@ -40,6 +44,7 @@ class NotionInterface:
       properties=SCHEMA
     )
     self.database_id = database["id"]
+
 
   def add_row(self, data):
     if not self.database_id:
