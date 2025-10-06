@@ -86,38 +86,32 @@ class NotionInterface:
     if not self.database_id:
         raise Exception("Database not initialized")
 
-    # Récupérer toutes les lignes
     rows = self.client.databases.query(database_id=self.database_id, page_size=100)["results"]
+    medals = ["🥇", "🥈", "🥉"]
 
-    # Les catégories à traiter
-    medals = ["🥇", "🥈", "🥉"]  # Préfixe des médailles
-
-    # Grouper les lignes par type
     type_groups = {}
     for row in rows:
         type_name = row["properties"]["Type"]["select"]["name"] if row["properties"]["Type"]["select"] else "Unknown"
         type_groups.setdefault(type_name, []).append(row)
 
     for type_name, group in type_groups.items():
-        # Créer un dictionnaire pour stocker les tags par ligne
         tags_per_row = {row["id"]: [] for row in group}
 
-        # Médailles pour D+ et Km
+        # D+ & km
         for category in ["D+", "Km"]:
-            sorted_group = sorted(
-                [
+            sorted_group = sorted([
                     (row["id"], row["properties"].get(category, {}).get("number"))
                     for row in group
                     if row["properties"].get(category, {}).get("number") is not None
                 ],
                 key=lambda x: x[1],
-                reverse=True  # du plus grand au plus petit
+                reverse=True  
             )
             for i, (row_id, _) in enumerate(sorted_group):
                 if i < 3:
                     tags_per_row[row_id].append(f"{medals[i]} {category}")
 
-        # Médailles pour Sec renommé Time (on valorise le plus long)
+        # Time (sec)
         sorted_sec = sorted(
             [
                 (row["id"], row["properties"].get("Sec", {}).get("number"))
@@ -125,13 +119,13 @@ class NotionInterface:
                 if row["properties"].get("Sec", {}).get("number") is not None
             ],
             key=lambda x: x[1],
-            reverse=True  # du plus long au plus court
+            reverse=True # Time : du +long au +court
         )
         for i, (row_id, _) in enumerate(sorted_sec):
             if i < 3:
                 tags_per_row[row_id].append(f"{medals[i]} Tm")
 
-        # Médailles pour Speed = Km / (Sec / 3600)
+        # Average speed (km/h)
         sorted_speed = sorted(
             [
                 (row["id"], (row["properties"].get("Km", {}).get("number", 0) * 3600) / row["properties"].get("Sec", {}).get("number"))
@@ -145,7 +139,7 @@ class NotionInterface:
             if i < 3:
                 tags_per_row[row_id].append(f"{medals[i]} Spd")
 
-        # Médailles pour Max Speed = Max km / h
+        # Max speed (km/h)
         sorted_max_speed = sorted(
             [
                 (row["id"], row["properties"].get("Max km / h", {}).get("number", 0))
@@ -153,13 +147,13 @@ class NotionInterface:
                 if row["properties"].get("Max km / h", {}).get("number") is not None
             ],
             key=lambda x: x[1],
-            reverse=True  # du plus rapide au moins rapide
+            reverse=True  
         )
         for i, (row_id, _) in enumerate(sorted_max_speed):
             if i < 3:
                 tags_per_row[row_id].append(f"{medals[i]} Mx")
 
-        # Mettre à jour chaque ligne avec tous les tags cumulés
+        # MAJ avec tous les tags
         for row_id, tags in tags_per_row.items():
             self.client.pages.update(
                 page_id=row_id,
